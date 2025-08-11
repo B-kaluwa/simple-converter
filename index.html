@@ -1,0 +1,86 @@
+<!-- public/index.html -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>File Converter — Prototype</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif; padding:20px; background:#f4f6f8; color:#222}
+    .card{max-width:760px;margin:40px auto;padding:20px;background:#fff;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+    h1{margin:0 0 10px;font-size:22px}
+    label{display:block;margin:8px 0;font-weight:600}
+    input[type=file]{padding:6px}
+    select,input,button{padding:10px;border-radius:6px;border:1px solid #ddd;width:100%;box-sizing:border-box;margin-bottom:10px}
+    button{background:#2ca44f;color:#fff;border:0;cursor:pointer;font-weight:700}
+    button:disabled{opacity:0.6}
+    .results{margin-top:12px}
+    .link{display:block;padding:8px;background:#e8f9ec;border-radius:6px;margin-bottom:6px; color:#114a21; text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Quick File Converter (Prototype)</h1>
+    <p>Upload a file, choose a target format and click Convert. The server will return a downloadable link.</p>
+
+    <form id="convForm">
+      <label>Choose file</label>
+      <input id="file" type="file" name="file" required />
+
+      <label>Target format</label>
+      <select id="format" name="targetFormat">
+        <option value="pdf">PDF</option>
+        <option value="png">PNG (images)</option>
+        <option value="jpg">JPG (images)</option>
+        <option value="csv">CSV (from XLSX)</option>
+        <option value="xlsx">XLSX (from CSV)</option>
+      </select>
+
+      <button id="submit">Convert & Download</button>
+    </form>
+
+    <div class="results" id="results"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('convForm');
+    const results = document.getElementById('results');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      results.innerHTML = '';
+      const fileInput = document.getElementById('file');
+      const format = document.getElementById('format').value;
+      if (!fileInput.files.length) return alert('Select a file');
+
+      const data = new FormData();
+      data.append('file', fileInput.files[0]);
+      data.append('targetFormat', format);
+
+      const btn = document.getElementById('submit');
+      btn.disabled = true;
+      btn.textContent = 'Converting...';
+
+      try {
+        const resp = await fetch('/api/convert', { method: 'POST', body: data });
+        const json = await resp.json();
+        if (!resp.ok) throw new Error(json.error || 'Conversion failed');
+
+        // Show download links
+        json.files.forEach(f => {
+          const a = document.createElement('a');
+          a.href = f.url;
+          a.textContent = 'Download ' + f.name;
+          a.className = 'link';
+          a.download = f.name;
+          results.appendChild(a);
+        });
+      } catch (err) {
+        results.innerHTML = '<div style="color:red">Error: ' + err.message + '</div>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Convert & Download';
+      }
+    });
+  </script>
+</body>
+</html>
